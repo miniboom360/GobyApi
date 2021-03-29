@@ -2,8 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"goby-scan/handler/gobyApi"
 	"context"
+	gobyApi "github.com/miniboom360/GobyApi"
 	"testing"
 	"time"
 )
@@ -13,7 +13,6 @@ func TestStartScan(t *testing.T) {
 	defer cancel()
 	ips := make([]string, 0)
 	ips = append(ips,"172.31.10.10")
-	ips = append(ips, "172.31.10.11")
 	g := gobyApi.NewGobyApi(ips,ctx)
 
 	g.StartScan()
@@ -22,7 +21,7 @@ func TestStartScan(t *testing.T) {
 		fmt.Println("StartScan is scuess, over!")
 	}
 
-	m, err := gobyApi.GetAssetByTaskId(g.TaskId)
+	m, err := g.GetAsserts()
 	if err !=nil{
 		fmt.Println(err)
 		return

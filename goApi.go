@@ -359,10 +359,10 @@ func Post(url string, data interface{}) ([]byte, error) {
 func getAssetByGobyTaskId(taskID string) (map[string]string, error){
 	if len(Asserts) == 0{
 		Asserts = make(map[string]map[string]string,0)
-		return getAssetByTaskIdFromHTTP(taskID)
+		return getAssetByTaskId(taskID)
 	}
 
-	return getAssetByTaskIdFromHTTP(taskID)
+	return getAssetByTaskId(taskID)
 }
 
 func GetAssetByTaskId(taskID string)(map[string]string, error){
@@ -421,7 +421,7 @@ func GetVulnsByTaskId(taskID string)(map[string]string, error){
 	return alls, nil
 }
 
-func getAssetByTaskIdFromHTTP(taskID string)(map[string]string, error){
+func getAssetByTaskId(taskID string)(map[string]string, error){
 	rt := make(map[string]string,0)
 
 	req := new(GObyAssetSearch)
@@ -453,19 +453,20 @@ func getAssetByTaskIdFromHTTP(taskID string)(map[string]string, error){
 
 		for _, v := range infoMap.(map[string]interface{}) {
 			hostinfo := v.(map[string]interface{})["hostinfo"].(string)
-			port := v.(map[string]interface{})["port"].(string)
 			protocol := v.(map[string]interface{})["protocol"].(string)
-			ip := strings.Split(hostinfo, ":")[0]
 			et := make(map[string]string, 0)
-			ekey := ip+":"+port
-			et[ekey] = protocol
+			et[hostinfo] = protocol
+
+			if Asserts == nil{
+				Asserts = make(map[string]map[string]string,0)
+			}
 
 			if _, ok := Asserts[taskID]; !ok{
 				Asserts[taskID] = et
 			}
 
-			if _, ok := Asserts[taskID][ekey];!ok{
-				Asserts[taskID][ekey] = protocol
+			if _, ok := Asserts[taskID][hostinfo];!ok{
+				Asserts[taskID][hostinfo] = protocol
 			}
 		}
 	}
@@ -506,89 +507,30 @@ func getVulnByGobyTaskIdFromHTTP(taskID string)(map[string]string, error){
 
 	return vulMap, nil
 }
+func (g *GobyApi) GetAsserts()(map[string]string,error){
+	vv, ok := AllAsserts.Load(g.TaskId);
+	if !ok{
+		return nil, errors.New("Can't find this TaskId")
+	}
+	gobyTaskIds := make([]string, 0)
 
-//增加poc扫描
-func StartScanWithPoc() {
-
-}
-
-func (g *GobyApi) getAssetByTaskId(taskID string) {
-	req := new(GObyAssetSearch)
-	//"taskid=taskiduuid"
-	req.Query = "taskid=" + taskID
-	r, err := g.post(getAssetSearch, req)
-	if err != nil {
-		log.Fatal(err)
-		return
+	switch vv.(type) {
+	case []string:
+		gobyTaskIds = vv.([]string)
+	default:
+		return nil, errors.New("can't interface to slice string")
 	}
 
-	p := gojsonq.New().FromString(string(r[:])).From("data.ips").Select("protocols").Select("hostinfo", "protocol")
-	list, ok := p.Get().([]interface{})
-	if !ok {
-		fmt.Println("COnvert error")
-	}
+	alls := make(map[string]string, 0)
 
-	for _, info := range list {
-		infoMap, ok := info.(map[string]interface{})
-		if !ok {
-			fmt.Println("OK")
+	for _, v := range gobyTaskIds{
+		m, err := getAssetByTaskId(v)
+		if err != nil{
+			return nil, err
 		}
-		fmt.Println(infoMap)
+		for ek, ev := range m{
+			alls[ek] = ev
+		}
 	}
-}
-
-//
-func (g *GobyApi) GetAssetDetails(taskID string) {
-	g.getAssetByTaskId("20210322131737")
-	//req := new(GobyGetProgess)
-	//req.Taskid
-
-}
-
-func AssetSearchByQuery() {
-
-}
-
-func GetChildrenCategory() {
-
-}
-
-func GetProgress() {
-
-}
-
-func AssetSearchByTaskid() {
-
-}
-
-func ResumeScan() {
-
-}
-
-func StopScan() {
-
-}
-
-func GetValueCAtegory() {
-
-}
-
-func AssetDetail() {
-
-}
-
-func GetPocs() {
-
-}
-
-func GetPocInfo() {
-
-}
-
-func VulnerabilitySearch() {
-
-}
-
-func DebugExp() {
-
+	return alls, nil
 }
