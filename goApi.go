@@ -534,3 +534,30 @@ func (g *GobyApi) GetAsserts()(map[string]string,error){
 	}
 	return alls, nil
 }
+func (g *GobyApi) GetVulns()(map[string]string,error){
+	vv, ok := AllAsserts.Load(g.TaskId);
+	if !ok{
+		return nil, errors.New("Can't find this TaskId")
+	}
+	gobyTaskIds := make([]string, 0)
+
+	switch vv.(type) {
+	case []string:
+		gobyTaskIds = vv.([]string)
+	default:
+		return nil, errors.New("can't interface to slice string")
+	}
+
+	alls := make(map[string]string, 0)
+
+	for _, v := range gobyTaskIds{
+		m, err := getVulnByGobyTaskIdFromHTTP(v)
+		if err != nil{
+			return nil, err
+		}
+		for ek, ev := range m{
+			alls[ek] = ev
+		}
+	}
+	return alls, nil
+}

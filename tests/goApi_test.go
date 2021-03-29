@@ -28,7 +28,7 @@ func TestStartScan(t *testing.T) {
 	}
 	fmt.Printf("details = %#v\n", m)
 
-	vuln, err := gobyApi.GetVulnsByTaskId(g.TaskId)
+	vuln, err := g.GetVulns()
 	if err != nil{
 		panic(err)
 	}
