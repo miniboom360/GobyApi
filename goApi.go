@@ -18,35 +18,8 @@ import (
 	"time"
 )
 
-/*
-	1. start a scan,  fix
-	NewGobyApi StartScan
-	2. get a ip details, get all scan ip details through a scan, use taskId
-
-	3. get a ip vuln details, get all scan ip vuln details through a scan use taskId
-
-	4. waitTime
-*/
-
-// map[TaskId][]map[gobyTaskId+ip] huanjie qingqiu yali
-
-// var DetailCache TaskId
-
 const (
-	maxScanContent int    = 5
-	gobyAddr       string = "http://127.0.0.1:8361/api/v1/"
-
-	startScanAddr = gobyAddr + "startScan"
-
-	getProgessAddr = gobyAddr + "getProgress"
-
-	getAssetSearch = gobyAddr + "assetSearch"
-
-	getVulnSearch = gobyAddr + "vulnerabilitySearch"
-
-	stopScanAddr = gobyAddr + "stopScan"
-
-	portScope = "100-7000"
+	maxScanContent int = 5
 )
 
 type (
@@ -60,8 +33,16 @@ type (
 		GobyTaskIdAndIPs map[string][]string
 		notice           chan int
 		ScanStatus       bool
+		HostInfo string
+		PortScope string
+		ctx       context.Context
 
-		ctx context.Context
+		//url
+		startScanAddr string
+		getProgessAddr string
+		getAssetSearch string
+		getVulnSearch string
+		stopScanAddr string
 	}
 
 	GobyStartScanReq struct {
@@ -88,7 +69,7 @@ type (
 	}
 )
 
-var(
+var (
 	// todo: sync.Map
 	// map[gobyTaskId]map[ip:port]asset
 	Asserts map[string]map[string]string
@@ -97,16 +78,24 @@ var(
 	AllAsserts sync.Map
 )
 
-func NewGobyApi(ips []string, ctx context.Context) *GobyApi {
+func NewGobyApi(ips []string, hostInfo, portScope string, ctx context.Context) *GobyApi {
 	g := new(GobyApi)
 	g.GobyTaskIdAndIPs = make(map[string][]string, 0)
 	g.notice = make(chan int, 0)
 	g.TaskId = uuid.New().String()
-	if ctx == nil{
+	if ctx == nil {
 		g.ctx = context.Background()
-	}else {
+	} else {
 		g.ctx = ctx
 	}
+	if hostInfo == "" {
+		g.HostInfo = "http://127.0.0.1:8361/api/v1/"
+	} else {
+		g.HostInfo = hostInfo + "/api/v1/"
+	}
+
+	g.PortScope = portScope
+
 	g.init(ips)
 	return g
 }
@@ -117,10 +106,10 @@ func NewGobyApi(ips []string, ctx context.Context) *GobyApi {
 // 192.168.1.1
 // 192.168.1.1#172.12.31.1#...
 func (g *GobyApi) init(ips []string) error {
-	for _, ip := range ips{
+	for _, ip := range ips {
 		if g.isIpv4(ip) {
 			g.WaitingIps = append(g.WaitingIps, ip)
-			return nil
+			continue
 		}
 		if find := strings.Contains(ip, "#"); find {
 			g.WaitingIps = append(g.WaitingIps, strings.Split(ip, "#")...)
@@ -128,18 +117,28 @@ func (g *GobyApi) init(ips []string) error {
 		if find := strings.Contains(ip, "-"); find {
 			ips, err := g.fromToIp(ip)
 			if err != nil {
-				return err
+				log.Fatal(err)
+				continue
 			}
 			g.WaitingIps = append(g.WaitingIps, ips...)
 		}
 		if find := strings.Contains(ip, "/24"); find {
 			ips, err := g.cPart(ip)
 			if err != nil {
-				return err
+				log.Fatal(err)
+				continue
 			}
 			g.WaitingIps = append(g.WaitingIps, ips...)
 		}
 	}
+
+	g.startScanAddr = g.HostInfo + "startScan"
+	g.getProgessAddr = g.HostInfo + "getProgress"
+	g.getAssetSearch = g.HostInfo + "assetSearch"
+	g.getVulnSearch = g.HostInfo + "vulnerabilitySearch"
+	g.stopScanAddr = g.HostInfo + "stopScan"
+
+
 	return nil
 }
 
@@ -207,29 +206,33 @@ func (g *GobyApi) isIpv4(ip string) bool {
 	return false
 }
 
-
 //开启扫描
 // set time wait
 func (g *GobyApi) StartScan() {
 	fmt.Println("start scan task")
-	g.unitScan()
+	if err := g.unitScan();err !=nil{
+		panic(err)
+	}
 	go g.tickListen()
 	for {
 		select {
 		case <-g.notice:
 			goTasks := make([]string, 0)
-			for k, _ := range g.GobyTaskIdAndIPs{
+			for k, _ := range g.GobyTaskIdAndIPs {
 				goTasks = append(goTasks, k)
 			}
-			if vv,ok:=AllAsserts.LoadOrStore(g.TaskId,goTasks);ok{
+			if vv, ok := AllAsserts.LoadOrStore(g.TaskId, goTasks); ok {
 				fmt.Println(vv)
 			}
 			fmt.Println("Scan Task Is Over!")
 			return
-		case <- g.ctx.Done():
+		case <-g.ctx.Done():
 			g.stopAllScanTasks()
 			fmt.Println("scan timeOut, now all scan tasks quit!")
 			return
+		//default:
+		//	fmt.Println("unknow error")
+		//	return
 		}
 	}
 }
@@ -245,18 +248,18 @@ func (g *GobyApi) tickListen() {
 	}
 }
 
-func (g *GobyApi) stopAllScanTasks(){
-	for taskId, _ := range g.GobyTaskIdAndIPs{
+func (g *GobyApi) stopAllScanTasks() {
+	for taskId, _ := range g.GobyTaskIdAndIPs {
 		g.stopGobyTask(taskId)
 	}
 }
 
 //stopScanAddr
-func (g *GobyApi) stopGobyTask(gobyTaskId string){
+func (g *GobyApi) stopGobyTask(gobyTaskId string) {
 	fmt.Printf("gobytaskId = %v, will stop", gobyTaskId)
 	req := new(GobyGetProgess)
 	req.Taskid = gobyTaskId
-	r, err := g.post(stopScanAddr, req)
+	r, err := g.post(g.stopScanAddr, req)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -265,7 +268,6 @@ func (g *GobyApi) stopGobyTask(gobyTaskId string){
 	fmt.Printf("gobytaskId = %v, stop scuess", gobyTaskId)
 }
 
-
 //curl 127.0.0.1:8361/api/v1/getProgress -d '{"taskid":"taskiduuid"}'
 func (g *GobyApi) checkGobyTaskProgess() bool {
 	if g.CurrentGobyTaskId == "" {
@@ -273,7 +275,7 @@ func (g *GobyApi) checkGobyTaskProgess() bool {
 	}
 	req := new(GobyGetProgess)
 	req.Taskid = g.CurrentGobyTaskId
-	r, err := g.post(getProgessAddr, req)
+	r, err := g.post(g.getProgessAddr, req)
 	if err != nil {
 		log.Fatal(err)
 		return false
@@ -312,13 +314,16 @@ func (g *GobyApi) unitScan() error {
 
 	body := GobyStartScanReq{}
 	body.Asset.Ips = g.ScaningIps
-	body.Asset.Ports = portScope
+	body.Asset.Ports = g.PortScope
 	body.Asset.Vulnerability.Type = "2"
 
-	b, err := g.post(startScanAddr, body)
+	b, err := g.post(g.startScanAddr, body)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
+	fmt.Println(string(b))
+
 	gobyTaskId := gojsonq.New().FromString(string(b[:])).Find("data.taskId").(string)
 	fmt.Printf("GobyTaskId = %s\n", gobyTaskId)
 	g.CurrentGobyTaskId = gobyTaskId
@@ -333,6 +338,7 @@ func (g *GobyApi) post(url string, data interface{}) ([]byte, error) {
 	jsonStr, _ := json.Marshal(data)
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil {
+		log.Fatal(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -341,96 +347,96 @@ func (g *GobyApi) post(url string, data interface{}) ([]byte, error) {
 	return result, nil
 }
 
-func Post(url string, data interface{}) ([]byte, error) {
-	// 超时时间：5秒
-	client := &http.Client{Timeout: 5 * time.Second}
-	jsonStr, _ := json.Marshal(data)
-	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+//func Post(url string, data interface{}) ([]byte, error) {
+//	// 超时时间：5秒
+//	client := &http.Client{Timeout: 5 * time.Second}
+//	jsonStr, _ := json.Marshal(data)
+//	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonStr))
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer resp.Body.Close()
+//
+//	result, _ := ioutil.ReadAll(resp.Body)
+//	return result, nil
+//}
 
-	result, _ := ioutil.ReadAll(resp.Body)
-	return result, nil
-}
+//// get all taskId
+//func getAssetByGobyTaskId(taskID string) (map[string]string, error){
+//	if len(Asserts) == 0{
+//		Asserts = make(map[string]map[string]string,0)
+//		return getAssetByTaskId(taskID)
+//	}
+//
+//	return getAssetByTaskId(taskID)
+//}
 
-// get all taskId
-func getAssetByGobyTaskId(taskID string) (map[string]string, error){
-	if len(Asserts) == 0{
-		Asserts = make(map[string]map[string]string,0)
-		return getAssetByTaskId(taskID)
-	}
+//func GetAssetByTaskId(taskID string)(map[string]string, error){
+//	vv, ok := AllAsserts.Load(taskID);
+//	if !ok{
+//		return nil, errors.New("Can't find this TaskId")
+//	}
+//	gobyTaskIds := make([]string, 0)
+//
+//	switch vv.(type) {
+//	case []string:
+//		gobyTaskIds = vv.([]string)
+//	default:
+//		return nil, errors.New("can't interface to slice string")
+//	}
+//
+//	alls := make(map[string]string, 0)
+//
+//	for _, v := range gobyTaskIds{
+//		m, err := getAssetByGobyTaskId(v)
+//		if err != nil{
+//			return nil, err
+//		}
+//		for ek, ev := range m{
+//			alls[ek] = ev
+//		}
+//	}
+//	return alls, nil
+//}
+//
+//func GetVulnsByTaskId(taskID string)(map[string]string, error){
+//	vv, ok := AllAsserts.Load(taskID);
+//	if !ok{
+//		return nil, errors.New("Can't find this TaskId")
+//	}
+//	gobyTaskIds := make([]string, 0)
+//
+//	switch vv.(type) {
+//	case []string:
+//		gobyTaskIds = vv.([]string)
+//	default:
+//		return nil, errors.New("can't interface to slice string")
+//	}
+//
+//	alls := make(map[string]string, 0)
+//
+//	for _, v := range gobyTaskIds{
+//		m, err := getVulnByGobyTaskIdFromHTTP(v)
+//		if err != nil{
+//			return nil, err
+//		}
+//		for ek, ev := range m{
+//			alls[ek] = ev
+//		}
+//	}
+//	return alls, nil
+//}
 
-	return getAssetByTaskId(taskID)
-}
-
-func GetAssetByTaskId(taskID string)(map[string]string, error){
-	vv, ok := AllAsserts.Load(taskID);
-	if !ok{
-		return nil, errors.New("Can't find this TaskId")
-	}
-	gobyTaskIds := make([]string, 0)
-
-	switch vv.(type) {
-	case []string:
-		gobyTaskIds = vv.([]string)
-	default:
-		return nil, errors.New("can't interface to slice string")
-	}
-
-	alls := make(map[string]string, 0)
-
-	for _, v := range gobyTaskIds{
-		m, err := getAssetByGobyTaskId(v)
-		if err != nil{
-			return nil, err
-		}
-		for ek, ev := range m{
-			alls[ek] = ev
-		}
-	}
-	return alls, nil
-}
-
-func GetVulnsByTaskId(taskID string)(map[string]string, error){
-	vv, ok := AllAsserts.Load(taskID);
-	if !ok{
-		return nil, errors.New("Can't find this TaskId")
-	}
-	gobyTaskIds := make([]string, 0)
-
-	switch vv.(type) {
-	case []string:
-		gobyTaskIds = vv.([]string)
-	default:
-		return nil, errors.New("can't interface to slice string")
-	}
-
-	alls := make(map[string]string, 0)
-
-	for _, v := range gobyTaskIds{
-		m, err := getVulnByGobyTaskIdFromHTTP(v)
-		if err != nil{
-			return nil, err
-		}
-		for ek, ev := range m{
-			alls[ek] = ev
-		}
-	}
-	return alls, nil
-}
-
-func getAssetByTaskId(taskID string)(map[string]string, error){
-	rt := make(map[string]string,0)
+func (g *GobyApi) getAssetByTaskId(taskID string) (map[string]string, error) {
+	rt := make(map[string]string, 0)
 
 	req := new(GObyAssetSearch)
 	//"taskid=taskiduuid"
 	req.Query = "taskid=" + taskID
-	r, err := Post(getAssetSearch, req)
+	r, err := g.post(g.getAssetSearch, req)
 	if err != nil {
 		log.Fatal(err)
-		return rt,err
+		return rt, err
 	}
 
 	rs := string(r[:])
@@ -441,7 +447,7 @@ func getAssetByTaskId(taskID string)(map[string]string, error){
 	}
 
 	//
-	if len(list) == 0{
+	if len(list) == 0 {
 		return nil, errors.New("Can't find this taskId")
 	}
 
@@ -457,15 +463,15 @@ func getAssetByTaskId(taskID string)(map[string]string, error){
 			et := make(map[string]string, 0)
 			et[hostinfo] = protocol
 
-			if Asserts == nil{
-				Asserts = make(map[string]map[string]string,0)
+			if Asserts == nil {
+				Asserts = make(map[string]map[string]string, 0)
 			}
 
-			if _, ok := Asserts[taskID]; !ok{
+			if _, ok := Asserts[taskID]; !ok {
 				Asserts[taskID] = et
 			}
 
-			if _, ok := Asserts[taskID][hostinfo];!ok{
+			if _, ok := Asserts[taskID][hostinfo]; !ok {
 				Asserts[taskID][hostinfo] = protocol
 			}
 		}
@@ -476,14 +482,14 @@ func getAssetByTaskId(taskID string)(map[string]string, error){
 }
 
 //map[vulurl]name
-func getVulnByGobyTaskIdFromHTTP(taskID string)(map[string]string, error){
+func (g *GobyApi) getVulnByGobyTaskIdFromHTTP(taskID string) (map[string]string, error) {
 	req := new(GObyAssetSearch)
 	//"taskid=taskiduuid"
 	req.Query = "taskid=" + taskID
-	r, err := Post(getVulnSearch, req)
+	r, err := g.post(g.getVulnSearch, req)
 	if err != nil {
 
-		return nil,err
+		return nil, err
 	}
 
 	fmt.Println(string(r[:]))
@@ -494,7 +500,7 @@ func getVulnByGobyTaskIdFromHTTP(taskID string)(map[string]string, error){
 		fmt.Println("Convert error")
 	}
 
-	if len(list) == 0{
+	if len(list) == 0 {
 		return vulMap, nil
 	}
 
@@ -507,9 +513,9 @@ func getVulnByGobyTaskIdFromHTTP(taskID string)(map[string]string, error){
 
 	return vulMap, nil
 }
-func (g *GobyApi) GetAsserts()(map[string]string,error){
-	vv, ok := AllAsserts.Load(g.TaskId);
-	if !ok{
+func (g *GobyApi) GetAsserts() (map[string]string, error) {
+	vv, ok := AllAsserts.Load(g.TaskId)
+	if !ok {
 		return nil, errors.New("Can't find this TaskId")
 	}
 	gobyTaskIds := make([]string, 0)
@@ -523,20 +529,20 @@ func (g *GobyApi) GetAsserts()(map[string]string,error){
 
 	alls := make(map[string]string, 0)
 
-	for _, v := range gobyTaskIds{
-		m, err := getAssetByTaskId(v)
-		if err != nil{
+	for _, v := range gobyTaskIds {
+		m, err := g.getAssetByTaskId(v)
+		if err != nil {
 			return nil, err
 		}
-		for ek, ev := range m{
+		for ek, ev := range m {
 			alls[ek] = ev
 		}
 	}
 	return alls, nil
 }
-func (g *GobyApi) GetVulns()(map[string]string,error){
-	vv, ok := AllAsserts.Load(g.TaskId);
-	if !ok{
+func (g *GobyApi) GetVulns() (map[string]string, error) {
+	vv, ok := AllAsserts.Load(g.TaskId)
+	if !ok {
 		return nil, errors.New("Can't find this TaskId")
 	}
 	gobyTaskIds := make([]string, 0)
@@ -550,12 +556,12 @@ func (g *GobyApi) GetVulns()(map[string]string,error){
 
 	alls := make(map[string]string, 0)
 
-	for _, v := range gobyTaskIds{
-		m, err := getVulnByGobyTaskIdFromHTTP(v)
-		if err != nil{
+	for _, v := range gobyTaskIds {
+		m, err := g.getVulnByGobyTaskIdFromHTTP(v)
+		if err != nil {
 			return nil, err
 		}
-		for ek, ev := range m{
+		for ek, ev := range m {
 			alls[ek] = ev
 		}
 	}

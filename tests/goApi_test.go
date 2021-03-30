@@ -13,7 +13,13 @@ func TestStartScan(t *testing.T) {
 	defer cancel()
 	ips := make([]string, 0)
 	ips = append(ips,"172.31.10.10")
-	g := gobyApi.NewGobyApi(ips,ctx)
+
+	//remote host
+	// not http://172.31.13.199:8361/
+	g := gobyApi.NewGobyApi(ips,"http://172.31.13.199:8361","1000-6000",ctx)
+
+	//localhost
+	//g := gobyApi.NewGobyApi(ips,"","1000-5000",ctx)
 
 	g.StartScan()
 	//fmt.Printf("g is %#v", g)
