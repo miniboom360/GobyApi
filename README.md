@@ -6,7 +6,6 @@
         <img src="https://img.shields.io/badge/license-MIT-blue" />
     <img src="https://img.shields.io/badge/build-passing-brightgreen">
         <img src="https://img.shields.io/badge/golang-100%25-brightgreen" />
- </ a>
 </p>
 
 这个库致力于将Goby API梳理和整合，以更简便的方式供gopher开发者使用，将Goby的资产梳理和漏洞扫描赋能给go开发者。
