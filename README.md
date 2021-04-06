@@ -1,6 +1,7 @@
 # GobyApi
-
-![image-20210406143851011](https://github.com/miniboom360/GobyApi/blob/master/img/goby.jpg)
+<p align="center">
+    <img width="350" src="https://github.com/miniboom360/GobyApi/blob/master/img/goby.jpg"/>
+<p>
 
 这个库致力于将Goby API梳理和整合，以更简便的方式供gopher开发者使用，将Goby的资产梳理和漏洞扫描赋能给go开发者。
 
