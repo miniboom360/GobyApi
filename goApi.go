@@ -305,7 +305,8 @@ func (g *GobyApi) checkGobyTaskProgess() bool {
 				return true
 			}
 			t++
-			fmt.Printf("0% 第%d次\n",t)
+			g.TaskFaildTimes[g.CurrentGobyTaskId] = t
+			fmt.Printf("0 第%d次\n",t)
 		}else{
 			g.TaskFaildTimes[g.CurrentGobyTaskId] = 1
 		}
