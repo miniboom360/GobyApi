@@ -12,7 +12,7 @@ func TestStartScan(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute * 30)
 	defer cancel()
 	ips := make([]string, 0)
-	ips = append(ips,"172.31.10.10")
+	ips = append(ips,"xxxx.xxx")
 
 	//remote host
 	// not http://172.31.13.199:8361/

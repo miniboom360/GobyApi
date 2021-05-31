@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="766f04cf-be60-4e0c-9b0c-cc08da98f6d0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/goApi.go" beforeDir="false" afterPath="$PROJECT_DIR$/goApi.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/goApi_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/tests/goApi_test.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -12,14 +12,23 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/goApi.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="191">
-              <caret line="303" column="24" selection-start-line="303" selection-start-column="21" selection-end-line="303" selection-end-column="24" />
+            <state relative-caret-position="228">
+              <caret line="382" column="2" lean-forward="true" selection-end-line="593" />
               <folding>
                 <element signature="e#17#222#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/tests/goApi_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="162">
+              <caret line="14" column="28" selection-start-line="14" selection-start-column="28" selection-end-line="14" selection-end-column="28" />
             </state>
           </provider>
         </entry>
@@ -42,12 +51,12 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/goApi.go" />
+        <option value="$PROJECT_DIR$/tests/goApi_test.go" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="22" />
-    <option name="y" value="31" />
+  <component name="ProjectFrameBounds">
+    <option name="x" value="377" />
     <option name="width" value="1393" />
     <option name="height" value="900" />
   </component>
@@ -62,6 +71,11 @@
             <path>
               <item name="GobyApi" type="b2602c69:ProjectViewProjectNode" />
               <item name="GobyApi" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="GobyApi" type="b2602c69:ProjectViewProjectNode" />
+              <item name="GobyApi" type="462c0819:PsiDirectoryNode" />
+              <item name="tests" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -91,8 +105,17 @@
       </list>
     </option>
   </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+  </component>
   <component name="ToolWindowManager">
-    <frame x="41" y="0" width="1393" height="900" extended-state="6" />
+    <frame x="377" y="0" width="1393" height="900" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Query Editor" />
@@ -107,7 +130,7 @@
       <window_info anchor="bottom" id="Version Control" />
       <window_info anchor="bottom" id="Log Manager" />
       <window_info anchor="bottom" id="Execute Anonymous" />
-      <window_info anchor="bottom" id="Terminal" />
+      <window_info anchor="bottom" id="Terminal" visible="true" weight="0.32954547" />
       <window_info anchor="bottom" id="Event Log" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
@@ -115,7 +138,7 @@
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32954547" />
       <window_info anchor="right" id="Database" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -128,11 +151,18 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/goApi.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="191">
-          <caret line="303" column="24" selection-start-line="303" selection-start-column="21" selection-end-line="303" selection-end-column="24" />
+        <state relative-caret-position="228">
+          <caret line="382" column="2" lean-forward="true" selection-end-line="593" />
           <folding>
             <element signature="e#17#222#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/goApi_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="162">
+          <caret line="14" column="28" selection-start-line="14" selection-start-column="28" selection-end-line="14" selection-end-column="28" />
         </state>
       </provider>
     </entry>
