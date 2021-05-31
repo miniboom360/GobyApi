@@ -20,6 +20,7 @@ import (
 
 const (
 	maxScanContent int = 5
+	maxTryScanCount int = 3
 )
 
 type (
@@ -36,6 +37,8 @@ type (
 		HostInfo string
 		PortScope string
 		ctx       context.Context
+
+		TaskFaildTimes map[string]int
 
 		//url
 		startScanAddr string
@@ -95,6 +98,8 @@ func NewGobyApi(ips []string, hostInfo, portScope string, ctx context.Context) *
 	}
 
 	g.PortScope = portScope
+
+	g.TaskFaildTimes = make(map[string]int,0)
 
 	g.init(ips)
 	return g
@@ -210,7 +215,7 @@ func (g *GobyApi) isIpv4(ip string) bool {
 // set time wait
 func (g *GobyApi) StartScan() {
 	fmt.Println("start scan task")
-	if err := g.unitScan();err !=nil{
+	if err := g.unitScan(false);err !=nil{
 		panic(err)
 	}
 	go g.tickListen()
@@ -224,6 +229,7 @@ func (g *GobyApi) StartScan() {
 			if vv, ok := AllAsserts.LoadOrStore(g.TaskId, goTasks); ok {
 				fmt.Println(vv)
 			}
+			g.stopAllScanTasks()
 			fmt.Println("Scan Task Is Over!")
 			return
 		case <-g.ctx.Done():
@@ -285,17 +291,35 @@ func (g *GobyApi) checkGobyTaskProgess() bool {
 
 	pi := int(p)
 	if pi == 100 {
-		g.unitScan()
+		g.unitScan(false)
 		fmt.Println("progress 100%")
 		return true
 	}
+
+	//如果一个任务连续3次0%，那么就将该任务剔除
+	if pi == 0{
+		if t,ok:=g.TaskFaildTimes[g.CurrentGobyTaskId];ok {
+			if t == maxTryScanCount{
+				g.unitScan(true)
+				fmt.Println("连续0%超过3次，扫描任务退出")
+				return true
+			}
+			t++
+			fmt.Printf("0% 第%d次\n",t)
+		}else{
+			g.TaskFaildTimes[g.CurrentGobyTaskId] = 1
+		}
+	}
+
 	fmt.Printf("Current progress is %d\n", pi)
 	return false
 }
 
-func (g *GobyApi) unitScan() error {
+
+//传入是否要求停止该扫描结束信号
+func (g *GobyApi) unitScan(isStop bool) error {
 	// all finish
-	if g.WaitingIps == nil || len(g.WaitingIps) == 0 {
+	if g.WaitingIps == nil || len(g.WaitingIps) == 0 || isStop {
 		fmt.Println("scan task all finished, now out!")
 		g.ScanStatus = true
 		g.notice <- 1
@@ -334,7 +358,7 @@ func (g *GobyApi) unitScan() error {
 
 func (g *GobyApi) post(url string, data interface{}) ([]byte, error) {
 	// 超时时间：5秒
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Minute}
 	jsonStr, _ := json.Marshal(data)
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil {
