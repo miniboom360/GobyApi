@@ -16,7 +16,7 @@ func TestStartScan(t *testing.T) {
 
 	//remote host
 	// not http://172.31.13.199:8361/
-	g := gobyApi.NewGobyApi(ips,"http://172.31.13.199:8361","1000-6000",ctx)
+	g := gobyApi.NewGobyApi(ips,"http://xxxx.xxx:8361","1000-6000",ctx)
 
 	//localhost
 	//g := gobyApi.NewGobyApi(ips,"","1000-5000",ctx)
