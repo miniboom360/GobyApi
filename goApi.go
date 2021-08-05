@@ -334,7 +334,7 @@ func (g *GobyApi) unitScan() error {
 
 func (g *GobyApi) post(url string, data interface{}) ([]byte, error) {
 	// 超时时间：5秒
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Minute}
 	jsonStr, _ := json.Marshal(data)
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil {
